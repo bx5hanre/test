@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — Clinique Nedjma 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<style>
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F4F6F9; --sidebar: #0B1628; --sidebar-hover: #152238;
+  --gold: #C9A84C; --gold-light: #E8C97A;
+  --white: #fff; --border: #E2E8F0; --muted: #8A9BB5;
+  --text: #1A2332; --text-light: #64748B;
+  --success: #22C55E; --danger: #EF4444; --info: #3B82F6;
+  --sans: 'Jost', sans-serif;
+}
+body { font-family: var(--sans); background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+button, input, select, textarea { font-family: var(--sans); }
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: 260px; background: var(--sidebar); min-height: 100vh;
+  display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+  transition: transform 0.3s;
+}
+.sidebar-logo { padding: 28px 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sidebar-logo-text { font-size: 18px; color: #fff; font-weight: 400; }
+.sidebar-logo-text span { color: var(--gold); }
+.sidebar-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+.sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
+.nav-section { font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #4A5568; padding: 16px 24px 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px; cursor: pointer; transition: background 0.2s;
+  font-size: 13px; color: #B8C5D6; border-left: 3px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { background: var(--sidebar-hover); color: #fff; }
+.nav-item.active { background: var(--sidebar-hover); color: var(--gold); border-left-color: var(--gold); }
+.nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge { background: var(--danger); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 10px; margin-left: auto; }
+.sidebar-bottom { padding: 20px 24px; border-top: 1px solid rgba(255,255,255,0.06); }
+.sidebar-user { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.sidebar-user strong { color: #fff; display: block; font-size: 13px; font-weight: 500; }
+.logout-btn { width: 100%; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171; padding: 9px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background 0.3s; }
+.logout-btn:hover { background: rgba(239,68,68,0.2); }
+
+/* ===== MAIN ===== */
+.main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+.topbar-title { font-size: 18px; font-weight: 500; color: var(--text); }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.view-site-btn { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); text-decoration: none; border: 1px solid rgba(201,168,76,0.4); padding: 7px 16px; transition: background 0.3s; }
+.view-site-btn:hover { background: rgba(201,168,76,0.08); }
+
+/* ===== CONTENT PANELS ===== */
+.panel { display: none; padding: 32px; }
+.panel.active { display: block; }
+
+/* ===== CARDS ===== */
+.card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.card-title { font-size: 15px; font-weight: 500; color: var(--text); }
+
+/* ===== STAT CARDS ===== */
+.stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; margin-bottom: 28px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 24px 20px; }
+.stat-card-num { font-size: 36px; font-weight: 300; color: var(--text); line-height: 1; margin-bottom: 6px; }
+.stat-card-lbl { font-size: 12px; color: var(--text-light); }
+.stat-card-icon { font-size: 24px; margin-bottom: 12px; }
+
+/* ===== FORMS ===== */
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; border: 1px solid var(--border); background: var(--white); color: var(--text);
+  padding: 10px 14px; font-size: 13px; outline: none; border-radius: 4px; transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.1); }
+.form-group textarea { resize: vertical; min-height: 90px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ===== BUTTONS ===== */
+.btn { padding: 9px 20px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; border: none; cursor: pointer; transition: opacity 0.2s, transform 0.1s; border-radius: 3px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--gold); color: #0B1628; }
+.btn-danger  { background: var(--danger); color: #fff; }
+.btn-info    { background: var(--info); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-ghost   { background: transparent; border: 1px solid var(--border); color: var(--text-light); }
+.btn-sm { padding: 6px 14px; font-size: 11px; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ===== TABLE ===== */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-light); padding: 10px 14px; border-bottom: 2px solid var(--border); text-align: left; }
+.data-table td { font-size: 13px; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #F8FAFC; }
+.table-wrap { overflow-x: auto; }
+
+/* ===== BADGES ===== */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.badge-success { background: rgba(34,197,94,0.12); color: #16A34A; }
+.badge-danger  { background: rgba(239,68,68,0.12); color: #DC2626; }
+.badge-info    { background: rgba(59,130,246,0.12); color: #2563EB; }
+.badge-muted   { background: #F1F5F9; color: #64748B; }
+
+/* ===== ALERTS ===== */
+.alert { padding: 12px 16px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; display: none; }
+.alert.show { display: block; }
+.alert-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #16A34A; }
+.alert-error   { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #DC2626; }
+
+/* ===== TOGGLE ===== */
+.toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: #CBD5E1; cursor: pointer; border-radius: 24px; transition: 0.3s; }
+.toggle-slider::before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+.toggle input:checked + .toggle-slider { background: var(--success); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+/* ===== MEDIA GRID ===== */
+.media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 12px; margin-top: 20px; }
+.media-item { position: relative; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #F8FAFC; cursor: pointer; }
+.media-item img, .media-item video { width: 100%; height: 110px; object-fit: cover; display: block; }
+.media-item-actions { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; gap: 8px; }
+.media-item:hover .media-item-actions { display: flex; }
+.media-url-tag { font-size: 10px; padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-light); background: #F8FAFC; border-top: 1px solid var(--border); }
+
+/* ===== UPLOAD AREA ===== */
+.upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: border-color 0.3s, background 0.3s; }
+.upload-area:hover { border-color: var(--gold); background: rgba(201,168,76,0.04); }
+.upload-area p { font-size: 13px; color: var(--text-light); margin-top: 10px; }
+.upload-area input[type="file"] { display: none; }
+.progress-bar-wrap { background: #E2E8F0; border-radius: 4px; height: 6px; margin-top: 12px; display: none; }
+.progress-bar { height: 100%; background: var(--gold); border-radius: 4px; transition: width 0.3s; }
+
+/* ===== STAR RATING ===== */
+.star-rating { display: flex; gap: 6px; margin-bottom: 4px; }
+.star-rating span { font-size: 24px; cursor: pointer; color: #CBD5E1; transition: color 0.2s; }
+.star-rating span.active { color: var(--gold); }
+
+/* ===== SPINNER ===== */
+.spinner { display: inline-block; width: 22px; height: 22px; border: 2px solid rgba(201,168,76,0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-row td { text-align: center; padding: 40px; }
+
+/* ===== MISC ===== */
+.empty-state { text-align: center; padding: 48px; color: var(--text-light); font-size: 14px; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.dot-new { background: var(--danger); }
+.dot-contacted { background: var(--success); }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .form-row-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-text">Clinique <span>Nedjma</span> 2</div>
+    <div class="sidebar-sub">Admin Control Panel</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showPanel('dashboard')"><span class="icon">📊</span> Dashboard</div>
+
+    <div class="nav-section">Content</div>
+    <div class="nav-item" onclick="showPanel('homepage')"><span class="icon">🏠</span> Homepage</div>
+    <div class="nav-item" onclick="showPanel('services')"><span class="icon">⚕️</span> Services</div>
+    <div class="nav-item" onclick="showPanel('doctors')"><span class="icon">👨‍⚕️</span> Doctors</div>
+    <div class="nav-item" onclick="showPanel('reviews')"><span class="icon">⭐</span> Reviews</div>
+    <div class="nav-item" onclick="showPanel('media')"><span class="icon">🖼️</span> Media Library</div>
+
+    <div class="nav-section">Communication</div>
+    <div class="nav-item" onclick="showPanel('contacts')"><span class="icon">💬</span> Contact Requests <span class="nav-badge" id="new-badge" style="display:none">0</span></div>
+
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="showPanel('settings')"><span class="icon">⚙️</span> Settings</div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="sidebar-user">
+      <strong id="admin-email">Loading...</strong>
+      Administrator
+    </div>
+    <button class="logout-btn" onclick="logOut()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-right">
+      <a href="../index.html" target="_blank" class="view-site-btn">View Website ↗</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: DASHBOARD                                             -->
+  <!-- ============================================================ -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-card-icon">⚕️</div><div class="stat-card-num" id="stat-services">–</div><div class="stat-card-lbl">Active Services</div></div>
+      <div class="stat-card"><div class="stat-card-icon">👨‍⚕️</div><div class="stat-card-num" id="stat-doctors">–</div><div class="stat-card-lbl">Active Doctors</div></div>
+      <div class="stat-card"><div class="stat-card-icon">💬</div><div class="stat-card-num" id="stat-messages">–</div><div class="stat-card-lbl">New Messages</div></div>
+      <div class="stat-card"><div class="stat-card-icon">👁️</div><div class="stat-card-num" id="stat-visits">–</div><div class="stat-card-lbl">Page Visits</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Recent Contact Requests</div><button class="btn btn-ghost btn-sm" onclick="showPanel('contacts')">View All</button></div>
+      <div class="table-wrap"><table class="data-table" id="dash-recent-table">
+        <thead><tr><th>Name</th><th>Phone</th><th>Department</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody id="dash-recent-body"><tr class="loading-row"><td colspan="5"><div class="spinner"></div></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: HOMEPAGE                                              -->
+  <!-- ============================================================ -->
+  <div class="panel" id="panel-homepage">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Homepage Content</div></div>
+      <div class="alert alert-success" id="hp-alert-s">✓ Homepage updated successfully.</div>
+      <div class="alert alert-error" id="hp-alert-e">Error saving. Please try again.</div>
+      <div class="form-row-2">
+        <div class="form-group"><label>Hero Title (use &lt;em&gt; for gold italic text)</label><input type="text" id="hp-title" placeholder="Where <em>Precision</em> Meets Compassion"></div>
+        <div class="form-group"><label>Hero Subtitle</label><input type="text" id="hp-subtitle" placeholder="World-class private medical care in Algeria"></div>
+      </div>
+      <div class="form-group"><label>Hero Background Image URL (paste from Media Library)</label><input type="text" id="hp-image" placeholder="https://firebasestorage.googleapis.com/..."></div>
+      <div class="form-group">
+        <label>Highlights (one per line — shown in scrolling marquee)</label>
+        <textarea id="hp-highlights" style="min-height:140px" placeholder="Maternity & Obstetrics&#10;Orthopedic Surgery&#10;Emergency Care 24/7&#10;Gynecology"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveHomepage()">💾 Save Homepage</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: SERVICES                                              -->
+  <!-- ============================================================ -->
+  <div class="panel" id="panel-services">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Services</div>
+        <button class="btn btn-primary" onclick="openServiceModal()">＋ Add Service</button>
+      </div>
+      <div class="alert alert-success" id="svc-alert-s">✓ Service saved.</div>
+      <div class="alert alert-error" id="svc-alert-e">Error saving service.</div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Name</th><th>Description</th><th>Visible</th><th>Actions</th></tr></thead>
+        <tbody id="services-tbody"><tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr></tbody>
+      </table></div>
+    </div>
+    <!-- Modal -->
+    <div id="service-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:8px;padding:32px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+        <h3 style="margin-bottom:24px;font-size:16px;" id="svc-modal-title">Add Service</h3>
+        <input type="hidden" id="svc-edit-id">
+        <div class="form-group"><label>Service Name *</label><input type="text" id="svc-name" placeholder="Orthopedic Surgery"></div>
+        <div class="form-group"><label>Description</label><textarea id="svc-desc" placeholder="Brief description of the service…"></textarea></div>
+        <div class="form-group"><label>Image URL (paste from Media Library)</label><input type="text" id="svc-img" placeholder="https://firebasestorage.googleapis.com/..."></div>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px;">
+          <label class="toggle"><input type="checkbox" id="svc-active" checked><span class="toggle-slider"></span></label>
+          <span style="font-size:13px;">Visible on website</span>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="saveService()">💾 Save</button>
+          <button class="btn btn-ghost" onclick="closeModal('service-modal')">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: DOCTORS                                               -->
+  <!-- ============================================================ -->
+  <div class="panel" id="panel-doctors">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Doctors</div>
+        <button class="btn btn-primary" onclick="openDoctorModal()">＋ Add Doctor</button>
+      </div>
+      <div class="alert alert-success" id="doc-alert-s">✓ Doctor saved.</div>
+      <div class="alert alert-error" id="doc-alert-e">Error saving doctor.</div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Name</th><th>Specialty</th><th>Visible</th><th>Actions</th></tr></thead>
+        <tbody id="doctors-tbody"><tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr></tbody>
+      </table></div>
+    </div>
+    <!-- Modal -->
+    <div id="doctor-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:8px;padding:32px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+        <h3 style="margin-bottom:24px;font-size:16px;" id="doc-modal-title">Add Doctor</h3>
+        <input type="hidden" id="doc-edit-id">
+        <div class="form-row-2">
+          <div class="form-group"><label>Full Name *</label><input type="text" id="doc-name" placeholder="Dr. Affetouch"></div>
+          <div class="form-group"><label>Specialty *</label><input type="text" id="doc-spec" placeholder="Obstetrics & Gynecology"></div>
+        </div>
+        <div class="form-group"><label>Photo URL (paste from Media Library)</label><input type="text" id="doc-img" placeholder="https://firebasestorage.googleapis.com/..."></div>
+        <div class="form-group"><label>Bio / Short Description</label><textarea id="doc-bio" placeholder="Brief doctor biography…"></textarea></div>
+        <div class="form-group" style="display:flex;align-items:center;gap:12px;">
+          <label class="toggle"><input type="checkbox" id="doc-active" checked><span class="toggle-slider"></span></label>
+          <span style="font-size:13px;">Visible on website</span>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="saveDoctor()">💾 Save</button>
+          <button class="btn btn-ghost" onclick="closeModal('doctor-modal')">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: REVIEWS                                               -->
+  <!-- ============================================================ -->
+  <div class="panel" id="panel-reviews">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Reviews</div>
+        <button class="btn btn-primary" onclick="openReviewModal()">＋ Add Review</button>
+      </div>
+      <div class="alert alert-success" id="rev-alert-s">✓ Review saved.</div>
+      <div class="alert alert-error" id="rev-alert-e">Error saving review.</div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Name</th><th>Rating</th><th>Message</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody id="reviews-tbody"><tr class="loading-row"><td colspan="5"><div class="spinner"></div></td></tr></tbody>
+      </table></div>
+    </div>
+    <!-- Modal -->
+    <div id="review-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:8px;padding:32px;width:500px;max-width:95vw;">
+        <h3 style="margin-bottom:24px;font-size:16px;">Add Review</h3>
+        <div class="form-group"><label>Patient Name *</label><input type="text" id="rev-name" placeholder="Amina B."></div>
+        <div class="form-group">
+          <label>Rating</label>
+          <div class="star-rating" id="star-rating">
+            <span onclick="setRating(1)">★</span>
+            <span onclick="setRating(2)">★</span>
+            <span onclick="setRating(3)">★</span>
+            <span onclick="setRating(4)">★</span>
+            <span onclick="setRating(5)">★</span>
+          </div>
+          <input type="hidden" id="rev-rating" value="5">
+        </div>
+        <div class="form-group"><label>Review Message *</label><textarea id="rev-msg" placeholder="Patient's review text…"></textarea></div>
+        <div style="display:flex;gap:12px;margin-top:8px;">
+          <button class="btn btn-primary" onclick="saveReview()">💾 Save</button>
+          <button class="btn btn-ghost" onclick="closeModal('review-modal')">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: MEDIA LIBRARY                                         -->
+  <!-- ============================================================ -->
+  <div class="panel" id="panel-media">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Upload New Media</div></div>
+      <div class="upload-area" onclick="document.getElementById('file-input').click()">
+        <div style="font-size:36px;">📁</div>
+        <p>Click to upload images or videos</p>
+        <p style="font-size:11px;margin-top:4px;">Supports: JPG, PNG, GIF, MP4 (max 10MB)</p>
+        <input type="file" id="file-input" accept="image/*,video/*" multiple onchange="uploadFiles(this.files)">
+      </div>
+      <div class="progress-bar-wrap" id="upload-progress-wrap">
+        <div class="progress-bar" id="upload-progress" style="width:0%"></div>
+      </div>
+      <div id="upload-status" style="font-size:12px;color:var(--text-light);margin-top:8px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Media Library</div><button class="btn btn-ghost btn-sm" onclick="loadMedia()">↻ Refresh</button></div>
+      <p style="font-size:12px;color:var(--text-light);margin-bottom:8px;">Click any image/video to copy its URL for use in Services, Doctors, or Homepage.</p>
+      <div class="media-grid" id="media-grid">
+        <div style="padding:40px;color:var(--text-light);font-size:13px;grid-column:1/-1;text-align:center"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: CONTACT REQUESTS                                      -->
+  <!-- ============================================================ -->
+  <div class="panel" id="panel-contacts">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Contact Requests</div></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Status</th><th>Name</th><th>Phone</th><th>Department</th><th>Message</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody id="contacts-tbody"><tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  PANEL: SETTINGS                                              -->
+  <!-- ============================================================ -->
+  <div class="panel" id="panel-settings">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Clinic Settings</div></div>
+      <div class="alert alert-success" id="set-alert-s">✓ Settings saved successfully.</div>
+      <div class="alert alert-error" id="set-alert-e">Error saving settings.</div>
+      <div class="form-row-2">
+        <div class="form-group"><label>Clinic Name</label><input type="text" id="set-name" placeholder="Clinique Nedjma 2"></div>
+        <div class="form-group"><label>Phone Number</label><input type="text" id="set-phone" placeholder="+213 555 123 456"></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group"><label>WhatsApp Number</label><input type="text" id="set-wa" placeholder="+213 555 123 456"></div>
+        <div class="form-group"><label>Email Address</label><input type="email" id="set-email" placeholder="clinic@email.com"></div>
+      </div>
+      <div class="form-group"><label>Address</label><input type="text" id="set-address" placeholder="Bourouba, Algiers, Algeria"></div>
+      <div class="form-group"><label>Opening Hours</label><input type="text" id="set-hours" placeholder="Open 24 hours, 7 days a week"></div>
+      <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Admin Account</div></div>
+      <div class="alert alert-success" id="pw-alert-s">✓ Password updated.</div>
+      <div class="alert alert-error" id="pw-alert-e" id="pw-alert-e">Error updating password.</div>
+      <div style="max-width:400px;">
+        <div class="form-group"><label>New Password</label><input type="password" id="new-pw" placeholder="New password (min 6 chars)"></div>
+        <div class="form-group"><label>Confirm Password</label><input type="password" id="confirm-pw" placeholder="Repeat new password"></div>
+        <button class="btn btn-info" onclick="updatePassword()">🔒 Update Password</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Firebase config -->
+<script src="../firebase-config.js"></script>
+
+<script>
+// ============================================================
+//  ADMIN DASHBOARD — Full CRUD
+// ============================================================
+
+/* ===== AUTH GUARD ===== */
+auth.onAuthStateChanged(user => {
+  if (!user) { window.location.href = 'login.html'; return; }
+  document.getElementById('admin-email').textContent = user.email;
+  initDashboard();
+});
+
+function logOut() {
+  auth.signOut().then(() => window.location.href = 'login.html');
+}
+
+/* ===== PANEL NAVIGATION ===== */
+const panelTitles = {
+  dashboard:'Dashboard', homepage:'Homepage Manager', services:'Services Manager',
+  doctors:'Doctors Manager', reviews:'Reviews Manager', media:'Media Library',
+  contacts:'Contact Requests', settings:'Settings'
+};
+const panelLoaders = {
+  dashboard: loadDashboard, homepage: loadHomepage,
+  services: loadServices, doctors: loadDoctors, reviews: loadReviews,
+  media: loadMedia, contacts: loadContacts, settings: loadSettings
+};
+
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => { if (n.textContent.trim().toLowerCase().startsWith(panelTitles[name].split(' ')[0].toLowerCase())) n.classList.add('active'); });
+  document.getElementById('topbar-title').textContent = panelTitles[name] || name;
+  if (panelLoaders[name]) panelLoaders[name]();
+}
+
+/* ===== ALERTS ===== */
+function showAlert(id, type, duration = 4000) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('alert-success','alert-error');
+  el.classList.add(type === 'success' ? 'alert-success' : 'alert-error');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+/* ===== MODALS ===== */
+function openModal(id) { const m = document.getElementById(id); m.style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+/* ===== INIT ===== */
+function initDashboard() { loadDashboard(); loadBadge(); }
+
+/* ===== DASHBOARD ===== */
+async function loadDashboard() {
+  try {
+    const [svc, doc, msg, set] = await Promise.all([
+      db.collection('services').where('isActive','==',true).get(),
+      db.collection('doctors').where('isActive','==',true).get(),
+      db.collection('contact_requests').where('status','==','new').get(),
+      db.collection('settings').doc('main').get()
+    ]);
+    document.getElementById('stat-services').textContent = svc.size;
+    document.getElementById('stat-doctors').textContent = doc.size;
+    document.getElementById('stat-messages').textContent = msg.size;
+    document.getElementById('stat-visits').textContent = (set.exists && set.data().page_visits) ? set.data().page_visits.toLocaleString() : '—';
+
+    const recent = await db.collection('contact_requests').orderBy('created_at','desc').limit(5).get();
+    const tbody = document.getElementById('dash-recent-body');
+    if (recent.empty) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No requests yet.</td></tr>'; return; }
+    tbody.innerHTML = recent.docs.map(doc => {
+      const r = doc.data(); const d = r.created_at ? new Date(r.created_at.toDate()).toLocaleDateString() : '—';
+      const badge = r.status === 'new' ? '<span class="badge badge-danger">New</span>' : '<span class="badge badge-success">Contacted</span>';
+      return `<tr><td>${r.name||'—'}</td><td>${r.phone||'—'}</td><td>${r.department||'—'}</td><td>${badge}</td><td>${d}</td></tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadBadge() {
+  const snap = await db.collection('contact_requests').where('status','==','new').get();
+  const badge = document.getElementById('new-badge');
+  if (snap.size > 0) { badge.textContent = snap.size; badge.style.display = 'inline-block'; }
+  else badge.style.display = 'none';
+}
+
+/* ===== HOMEPAGE ===== */
+async function loadHomepage() {
+  try {
+    const doc = await db.collection('homepage').doc('main').get();
+    if (!doc.exists) return;
+    const h = doc.data();
+    if (h.title) document.getElementById('hp-title').value = h.title;
+    if (h.subtitle) document.getElementById('hp-subtitle').value = h.subtitle;
+    if (h.hero_image) document.getElementById('hp-image').value = h.hero_image;
+    if (h.highlights) document.getElementById('hp-highlights').value = h.highlights.join('\n');
+  } catch(e) { console.error(e); }
+}
+
+async function saveHomepage() {
+  try {
+    const highlights = document.getElementById('hp-highlights').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    await db.collection('homepage').doc('main').set({
+      title:       document.getElementById('hp-title').value.trim(),
+      subtitle:    document.getElementById('hp-subtitle').value.trim(),
+      hero_image:  document.getElementById('hp-image').value.trim(),
+      highlights
+    }, { merge: true });
+    showAlert('hp-alert-s','success'); showAlert('hp-alert-e','hide');
+  } catch(e) { showAlert('hp-alert-e','error'); }
+}
+
+/* ===== SERVICES ===== */
+async function loadServices() {
+  const tbody = document.getElementById('services-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr>';
+  try {
+    const snap = await db.collection('services').orderBy('name').get();
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No services yet. Add one above.</td></tr>'; return; }
+    tbody.innerHTML = snap.docs.map(doc => {
+      const s = doc.data();
+      const badge = s.isActive ? '<span class="badge badge-success">Visible</span>' : '<span class="badge badge-muted">Hidden</span>';
+      return `<tr>
+        <td><strong>${s.name}</strong></td>
+        <td style="max-width:260px;font-size:12px;color:var(--text-light)">${(s.description||'').substring(0,80)}${(s.description||'').length>80?'…':''}</td>
+        <td>${badge}</td>
+        <td style="display:flex;gap:8px;padding:12px 14px;">
+          <button class="btn btn-ghost btn-sm" onclick="editService('${doc.id}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteService('${doc.id}','${s.name}')">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Error loading services.</td></tr>'; }
+}
+
+function openServiceModal(data, id) {
+  document.getElementById('svc-modal-title').textContent = id ? 'Edit Service' : 'Add Service';
+  document.getElementById('svc-edit-id').value = id || '';
+  document.getElementById('svc-name').value  = data?.name || '';
+  document.getElementById('svc-desc').value  = data?.description || '';
+  document.getElementById('svc-img').value   = data?.image || '';
+  document.getElementById('svc-active').checked = data?.isActive !== false;
+  openModal('service-modal');
+}
+
+async function editService(id) {
+  const doc = await db.collection('services').doc(id).get();
+  if (doc.exists) openServiceModal(doc.data(), id);
+}
+
+async function saveService() {
+  const id   = document.getElementById('svc-edit-id').value;
+  const name = document.getElementById('svc-name').value.trim();
+  if (!name) { alert('Service name is required.'); return; }
+  const data = {
+    name, description: document.getElementById('svc-desc').value.trim(),
+    image: document.getElementById('svc-img').value.trim(),
+    isActive: document.getElementById('svc-active').checked
+  };
+  try {
+    if (id) await db.collection('services').doc(id).update(data);
+    else     await db.collection('services').add(data);
+    closeModal('service-modal'); loadServices(); showAlert('svc-alert-s','success');
+  } catch(e) { showAlert('svc-alert-e','error'); }
+}
+
+async function deleteService(id, name) {
+  if (!confirm(`Delete service "${name}"? This cannot be undone.`)) return;
+  try { await db.collection('services').doc(id).delete(); loadServices(); } catch(e) { alert('Error deleting.'); }
+}
+
+/* ===== DOCTORS ===== */
+async function loadDoctors() {
+  const tbody = document.getElementById('doctors-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="4"><div class="spinner"></div></td></tr>';
+  try {
+    const snap = await db.collection('doctors').orderBy('name').get();
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No doctors yet.</td></tr>'; return; }
+    tbody.innerHTML = snap.docs.map(doc => {
+      const d = doc.data();
+      const badge = d.isActive ? '<span class="badge badge-success">Visible</span>' : '<span class="badge badge-muted">Hidden</span>';
+      return `<tr>
+        <td><strong>${d.name}</strong></td>
+        <td>${d.specialty||'—'}</td>
+        <td>${badge}</td>
+        <td style="display:flex;gap:8px;padding:12px 14px;">
+          <button class="btn btn-ghost btn-sm" onclick="editDoctor('${doc.id}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDoctor('${doc.id}','${d.name}')">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Error loading doctors.</td></tr>'; }
+}
+
+function openDoctorModal(data, id) {
+  document.getElementById('doc-modal-title').textContent = id ? 'Edit Doctor' : 'Add Doctor';
+  document.getElementById('doc-edit-id').value = id || '';
+  document.getElementById('doc-name').value = data?.name || '';
+  document.getElementById('doc-spec').value = data?.specialty || '';
+  document.getElementById('doc-img').value  = data?.image || '';
+  document.getElementById('doc-bio').value  = data?.bio || '';
+  document.getElementById('doc-active').checked = data?.isActive !== false;
+  openModal('doctor-modal');
+}
+
+async function editDoctor(id) {
+  const doc = await db.collection('doctors').doc(id).get();
+  if (doc.exists) openDoctorModal(doc.data(), id);
+}
+
+async function saveDoctor() {
+  const id   = document.getElementById('doc-edit-id').value;
+  const name = document.getElementById('doc-name').value.trim();
+  if (!name) { alert('Doctor name is required.'); return; }
+  const data = {
+    name, specialty: document.getElementById('doc-spec').value.trim(),
+    image: document.getElementById('doc-img').value.trim(),
+    bio:   document.getElementById('doc-bio').value.trim(),
+    isActive: document.getElementById('doc-active').checked
+  };
+  try {
+    if (id) await db.collection('doctors').doc(id).update(data);
+    else     await db.collection('doctors').add(data);
+    closeModal('doctor-modal'); loadDoctors(); showAlert('doc-alert-s','success');
+  } catch(e) { showAlert('doc-alert-e','error'); }
+}
+
+async function deleteDoctor(id, name) {
+  if (!confirm(`Delete doctor "${name}"?`)) return;
+  try { await db.collection('doctors').doc(id).delete(); loadDoctors(); } catch(e) { alert('Error deleting.'); }
+}
+
+/* ===== REVIEWS ===== */
+let currentRating = 5;
+function setRating(n) {
+  currentRating = n;
+  document.getElementById('rev-rating').value = n;
+  document.querySelectorAll('#star-rating span').forEach((s, i) => s.classList.toggle('active', i < n));
+}
+setRating(5);
+
+function openReviewModal() {
+  document.getElementById('rev-name').value = '';
+  document.getElementById('rev-msg').value  = '';
+  setRating(5);
+  openModal('review-modal');
+}
+
+async function loadReviews() {
+  const tbody = document.getElementById('reviews-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="5"><div class="spinner"></div></td></tr>';
+  try {
+    const snap = await db.collection('reviews').orderBy('date','desc').get();
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No reviews yet.</td></tr>'; return; }
+    tbody.innerHTML = snap.docs.map(doc => {
+      const r = doc.data();
+      const stars = '★'.repeat(r.rating||5);
+      const date  = r.date ? new Date(r.date.toDate()).toLocaleDateString() : '—';
+      return `<tr>
+        <td><strong>${r.name}</strong></td>
+        <td style="color:#C9A84C">${stars}</td>
+        <td style="max-width:280px;font-size:12px;color:var(--text-light)">${(r.message||'').substring(0,80)}…</td>
+        <td>${date}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteReview('${doc.id}')">🗑</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Error loading reviews.</td></tr>'; }
+}
+
+async function saveReview() {
+  const name = document.getElementById('rev-name').value.trim();
+  const msg  = document.getElementById('rev-msg').value.trim();
+  if (!name || !msg) { alert('Name and message are required.'); return; }
+  try {
+    await db.collection('reviews').add({ name, message: msg, rating: currentRating, date: firebase.firestore.Timestamp.now() });
+    closeModal('review-modal'); loadReviews(); showAlert('rev-alert-s','success');
+  } catch(e) { showAlert('rev-alert-e','error'); }
+}
+
+async function deleteReview(id) {
+  if (!confirm('Delete this review?')) return;
+  try { await db.collection('reviews').doc(id).delete(); loadReviews(); } catch(e) { alert('Error deleting.'); }
+}
+
+/* ===== MEDIA LIBRARY ===== */
+async function uploadFiles(files) {
+  const progressWrap = document.getElementById('upload-progress-wrap');
+  const progressBar  = document.getElementById('upload-progress');
+  const statusEl     = document.getElementById('upload-status');
+  progressWrap.style.display = 'block';
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    statusEl.textContent = `Uploading ${file.name}…`;
+    const ref = storage.ref(`clinic-media/${Date.now()}_${file.name}`);
+    const task = ref.put(file);
+    await new Promise((resolve, reject) => {
+      task.on('state_changed',
+        snap => { progressBar.style.width = `${(snap.bytesTransferred / snap.totalBytes) * 100}%`; },
+        reject,
+        async () => {
+          const url = await task.snapshot.ref.getDownloadURL();
+          const type = file.type.startsWith('video') ? 'video' : 'image';
+          await db.collection('media').add({ file_url: url, type, file_name: file.name, uploaded_at: firebase.firestore.FieldValue.serverTimestamp() });
+          resolve();
+        }
+      );
+    });
+  }
+  progressWrap.style.display = 'none'; progressBar.style.width = '0%';
+  statusEl.textContent = `✓ ${files.length} file(s) uploaded successfully.`;
+  loadMedia();
+}
+
+async function loadMedia() {
+  const grid = document.getElementById('media-grid');
+  grid.innerHTML = '<div style="padding:40px;color:var(--text-light);font-size:13px;grid-column:1/-1;text-align:center"><div class="spinner"></div></div>';
+  try {
+    const snap = await db.collection('media').orderBy('uploaded_at','desc').get();
+    if (snap.empty) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:40px">No media uploaded yet.</div>'; return; }
+    grid.innerHTML = snap.docs.map(doc => {
+      const m = doc.data();
+      const media = m.type === 'video'
+        ? `<video src="${m.file_url}" style="width:100%;height:110px;object-fit:cover;"></video>`
+        : `<img src="${m.file_url}" loading="lazy" alt="media">`;
+      return `<div class="media-item" onclick="copyUrl('${m.file_url}')">
+        ${media}
+        <div class="media-item-actions">
+          <button class="btn btn-info btn-sm" style="font-size:11px;" onclick="event.stopPropagation();copyUrl('${m.file_url}')">📋 Copy URL</button>
+          <button class="btn btn-danger btn-sm" style="font-size:11px;" onclick="event.stopPropagation();deleteMedia('${doc.id}','${m.file_url}')">🗑</button>
+        </div>
+        <div class="media-url-tag">${m.file_name || 'media'}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:40px">Error loading media.</div>'; }
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    const old = document.getElementById('upload-status').textContent;
+    document.getElementById('upload-status').textContent = '✓ URL copied to clipboard!';
+    setTimeout(() => document.getElementById('upload-status').textContent = old, 2000);
+  });
+}
+
+async function deleteMedia(id, url) {
+  if (!confirm('Delete this media file?')) return;
+  try {
+    await db.collection('media').doc(id).delete();
+    try { await storage.refFromURL(url).delete(); } catch(e) { /* ignore if already gone */ }
+    loadMedia();
+  } catch(e) { alert('Error deleting media.'); }
+}
+
+/* ===== CONTACT REQUESTS ===== */
+async function loadContacts() {
+  const tbody = document.getElementById('contacts-tbody');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>';
+  try {
+    const snap = await db.collection('contact_requests').orderBy('created_at','desc').get();
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No contact requests yet.</td></tr>'; return; }
+    tbody.innerHTML = snap.docs.map(doc => {
+      const r = doc.data();
+      const date = r.created_at ? new Date(r.created_at.toDate()).toLocaleString() : '—';
+      const isNew = r.status === 'new';
+      const badge = isNew ? '<span class="status-dot dot-new"></span>New' : '<span class="status-dot dot-contacted"></span>Contacted';
+      const actionBtn = isNew
+        ? `<button class="btn btn-success btn-sm" onclick="markContacted('${doc.id}')">✓ Mark Contacted</button>`
+        : `<span style="font-size:12px;color:var(--text-light)">Done</span>`;
+      return `<tr>
+        <td>${badge}</td>
+        <td><strong>${r.name||'—'}</strong></td>
+        <td><a href="tel:${r.phone}" style="color:var(--info)">${r.phone||'—'}</a></td>
+        <td>${r.department||'—'}</td>
+        <td style="max-width:200px;font-size:12px;color:var(--text-light)">${(r.message||'').substring(0,60)}${(r.message||'').length>60?'…':''}</td>
+        <td style="font-size:12px;color:var(--text-light)">${date}</td>
+        <td>${actionBtn}</td>
+      </tr>`;
+    }).join('');
+    loadBadge();
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Error loading requests.</td></tr>'; }
+}
+
+async function markContacted(id) {
+  try { await db.collection('contact_requests').doc(id).update({ status: 'contacted' }); loadContacts(); } catch(e) { alert('Error updating.'); }
+}
+
+/* ===== SETTINGS ===== */
+async function loadSettings() {
+  try {
+    const doc = await db.collection('settings').doc('main').get();
+    if (!doc.exists) return;
+    const s = doc.data();
+    document.getElementById('set-name').value    = s.clinic_name    || '';
+    document.getElementById('set-phone').value   = s.phone          || '';
+    document.getElementById('set-wa').value      = s.whatsapp       || '';
+    document.getElementById('set-email').value   = s.email          || '';
+    document.getElementById('set-address').value = s.address        || '';
+    document.getElementById('set-hours').value   = s.opening_hours  || '';
+  } catch(e) { console.error(e); }
+}
+
+async function saveSettings() {
+  try {
+    await db.collection('settings').doc('main').set({
+      clinic_name:   document.getElementById('set-name').value.trim(),
+      phone:         document.getElementById('set-phone').value.trim(),
+      whatsapp:      document.getElementById('set-wa').value.trim(),
+      email:         document.getElementById('set-email').value.trim(),
+      address:       document.getElementById('set-address').value.trim(),
+      opening_hours: document.getElementById('set-hours').value.trim()
+    }, { merge: true });
+    showAlert('set-alert-s','success');
+  } catch(e) { showAlert('set-alert-e','error'); }
+}
+
+async function updatePassword() {
+  const pw  = document.getElementById('new-pw').value;
+  const cpw = document.getElementById('confirm-pw').value;
+  if (!pw || pw.length < 6) { showAlert('pw-alert-e','error'); document.getElementById('pw-alert-e').textContent='Password must be at least 6 characters.'; return; }
+  if (pw !== cpw) { showAlert('pw-alert-e','error'); document.getElementById('pw-alert-e').textContent='Passwords do not match.'; return; }
+  try {
+    await auth.currentUser.updatePassword(pw);
+    showAlert('pw-alert-s','success');
+    document.getElementById('new-pw').value = '';
+    document.getElementById('confirm-pw').value = '';
+  } catch(e) {
+    document.getElementById('pw-alert-e').textContent = e.code === 'auth/requires-recent-login' ? 'Please log out and log back in before changing your password.' : 'Error updating password.';
+    showAlert('pw-alert-e','error');
+  }
+}
+</script>
+</body>
+</html>

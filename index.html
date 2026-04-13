@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinique Nedjma 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+<style>
+/* ===================== RESET & VARIABLES ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #0B1628; --navy-mid: #152238; --navy-light: #1e3356;
+  --gold: #C9A84C; --gold-light: #E8C97A;
+  --cream: #FAF7F0; --white: #fff;
+  --muted: #8A9BB5; --text-light: #B8C5D6;
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Jost', sans-serif;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--sans); background: var(--navy); color: var(--white); overflow-x: hidden; }
+img { max-width: 100%; display: block; object-fit: cover; }
+
+/* ===================== UTILITIES ===================== */
+.section-tag { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+.section-tag::before { content: ''; width: 24px; height: 1px; background: var(--gold); }
+.section-h2 { font-family: var(--serif); font-size: clamp(32px,3.5vw,52px); font-weight: 300; line-height: 1.15; margin-bottom: 24px; }
+.section-h2 em { font-style: italic; color: var(--gold); }
+.body-text { font-size: 15px; line-height: 1.9; color: var(--text-light); font-weight: 300; }
+.btn-gold { background: var(--gold); color: var(--navy); padding: 15px 38px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; font-weight: 500; font-family: var(--sans); transition: background 0.3s; display: inline-block; border: none; cursor: pointer; }
+.btn-gold:hover { background: var(--gold-light); }
+.btn-outline { border: 1px solid var(--gold); color: var(--gold); padding: 14px 32px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; font-weight: 400; font-family: var(--sans); transition: background 0.3s, color 0.3s; display: inline-block; }
+.btn-outline:hover { background: var(--gold); color: var(--navy); }
+.spinner { display: inline-block; width: 28px; height: 28px; border: 2px solid rgba(201,168,76,0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-wrap { display: flex; justify-content: center; padding: 40px; }
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ===================== NAV ===================== */
+nav {
+  position: fixed; top: 0; width: 100%; z-index: 200;
+  padding: 24px 60px; display: flex; align-items: center; justify-content: space-between;
+  transition: background 0.4s, padding 0.4s;
+}
+nav.scrolled { background: rgba(11,22,40,0.96); backdrop-filter: blur(20px); padding: 16px 60px; border-bottom: 1px solid rgba(201,168,76,0.15); }
+.nav-logo { font-family: var(--serif); font-size: 20px; font-weight: 500; color: var(--white); text-decoration: none; }
+.nav-logo span { color: var(--gold); }
+.nav-links { display: flex; gap: 36px; list-style: none; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.nav-links a { color: var(--text-light); text-decoration: none; transition: color 0.3s; }
+.nav-links a:hover { color: var(--gold); }
+.nav-cta { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid var(--gold); color: var(--gold); padding: 10px 24px; text-decoration: none; transition: background 0.3s, color 0.3s; }
+.nav-cta:hover { background: var(--gold); color: var(--navy); }
+.hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 4px; }
+.hamburger span { display: block; width: 24px; height: 1.5px; background: var(--white); transition: 0.3s; }
+.mobile-menu { display: none; position: fixed; inset: 0; background: var(--navy); z-index: 150; flex-direction: column; align-items: center; justify-content: center; gap: 32px; }
+.mobile-menu.open { display: flex; }
+.mobile-menu a { font-family: var(--serif); font-size: 32px; color: var(--white); text-decoration: none; font-weight: 300; }
+.mobile-menu a:hover { color: var(--gold); }
+.mobile-close { position: absolute; top: 28px; right: 28px; background: none; border: none; color: var(--white); font-size: 28px; cursor: pointer; }
+
+/* ===================== HERO ===================== */
+#hero {
+  min-height: 100vh; display: flex; align-items: center;
+  position: relative; overflow: hidden;
+  background: var(--navy);
+}
+.hero-bg-img {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0.15;
+  transition: opacity 0.5s;
+}
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(11,22,40,0.95) 50%, rgba(11,22,40,0.4)); }
+.hero-grid-lines { position: absolute; inset: 0; opacity: 0.04; background-image: linear-gradient(90deg, var(--gold) 1px, transparent 1px), linear-gradient(180deg, var(--gold) 1px, transparent 1px); background-size: 80px 80px; }
+.hero-content { position: relative; z-index: 2; padding: 140px 60px 80px; max-width: 700px; }
+.hero-badge { display: inline-flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin-bottom: 32px; }
+.hero-badge::before { content: ''; display: inline-block; width: 32px; height: 1px; background: var(--gold); }
+#hero-title { font-family: var(--serif); font-size: clamp(46px,5.5vw,78px); font-weight: 300; line-height: 1.08; margin-bottom: 24px; }
+#hero-title em { font-style: italic; color: var(--gold); }
+#hero-subtitle { font-size: 15px; line-height: 1.8; color: var(--text-light); font-weight: 300; max-width: 480px; margin-bottom: 44px; }
+.hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+.hero-scroll { position: absolute; bottom: 36px; left: 60px; display: flex; align-items: center; gap: 12px; }
+.hero-scroll-line { width: 1px; height: 50px; background: linear-gradient(to bottom, var(--gold), transparent); }
+.hero-scroll-text { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); writing-mode: vertical-rl; }
+
+/* highlights bar */
+#highlights-bar { background: var(--navy-mid); padding: 0 60px; border-top: 1px solid rgba(201,168,76,0.1); border-bottom: 1px solid rgba(201,168,76,0.1); overflow: hidden; }
+.highlights-track { display: flex; gap: 60px; animation: marquee 20s linear infinite; width: max-content; padding: 18px 0; }
+.highlight-item { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.h-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ===================== STATS ===================== */
+#stats { padding: 80px 60px; max-width: 1400px; margin: 0 auto; }
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); border: 1px solid rgba(201,168,76,0.15); }
+.stat-box { padding: 48px 36px; text-align: center; border-right: 1px solid rgba(201,168,76,0.15); }
+.stat-box:last-child { border-right: none; }
+.stat-num { font-family: var(--serif); font-size: 58px; font-weight: 300; color: var(--white); line-height: 1; display: block; margin-bottom: 8px; }
+.stat-num sup { font-size: 26px; color: var(--gold); vertical-align: super; }
+.stat-lbl { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+/* ===================== SERVICES ===================== */
+#services { background: var(--navy-mid); padding: 100px 60px; }
+.services-header { max-width: 1400px; margin: 0 auto 64px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+#services-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: rgba(255,255,255,0.04); }
+.service-card { background: var(--navy-mid); padding: 44px 36px; position: relative; overflow: hidden; transition: background 0.3s; cursor: default; }
+.service-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--gold); transform: scaleX(0); transform-origin: left; transition: transform 0.4s; }
+.service-card:hover::after { transform: scaleX(1); }
+.service-card:hover { background: rgba(201,168,76,0.03); }
+.service-img { width: 100%; height: 160px; object-fit: cover; margin-bottom: 24px; background: var(--navy-light); }
+.service-icon-ph { width: 100%; height: 160px; background: var(--navy-light); margin-bottom: 24px; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+.service-name { font-family: var(--serif); font-size: 22px; font-weight: 400; margin-bottom: 12px; }
+.service-desc { font-size: 13px; line-height: 1.8; color: var(--muted); font-weight: 300; }
+
+/* ===================== DOCTORS ===================== */
+#doctors { padding: 100px 60px; max-width: 1400px; margin: 0 auto; }
+#doctors-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 24px; margin-top: 60px; }
+.doctor-card { background: var(--navy-mid); border: 1px solid rgba(201,168,76,0.1); text-align: center; overflow: hidden; transition: border-color 0.3s, transform 0.3s; }
+.doctor-card:hover { border-color: rgba(201,168,76,0.3); transform: translateY(-4px); }
+.doctor-img { width: 100%; height: 220px; object-fit: cover; background: var(--navy-light); }
+.doctor-avatar-ph { width: 100%; height: 220px; background: var(--navy-light); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 48px; color: rgba(201,168,76,0.3); }
+.doctor-info { padding: 24px 20px; }
+.doctor-name { font-family: var(--serif); font-size: 20px; font-weight: 400; margin-bottom: 6px; }
+.doctor-specialty { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+.doctor-bio { font-size: 12px; color: var(--muted); line-height: 1.7; font-weight: 300; }
+
+/* ===================== REVIEWS ===================== */
+#reviews { background: var(--cream); color: var(--navy); padding: 100px 60px; }
+#reviews .section-tag { color: var(--gold); }
+#reviews .section-tag::before { background: var(--gold); }
+#reviews .section-h2 { color: var(--navy); }
+#reviews-grid { max-width: 1400px; margin: 56px auto 0; display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+.review-card { background: var(--white); padding: 36px 32px; border-bottom: 3px solid transparent; transition: border-color 0.3s, transform 0.3s; }
+.review-card:hover { border-bottom-color: var(--gold); transform: translateY(-4px); }
+.review-stars { color: var(--gold); font-size: 14px; margin-bottom: 16px; letter-spacing: 3px; }
+.review-msg { font-family: var(--serif); font-size: 17px; font-style: italic; line-height: 1.65; color: var(--navy); margin-bottom: 24px; font-weight: 400; }
+.review-author { display: flex; align-items: center; gap: 12px; }
+.review-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--navy); display: flex; align-items: center; justify-content: center; font-size: 13px; font-family: var(--serif); color: var(--gold); flex-shrink: 0; font-weight: 400; }
+.review-name { font-size: 13px; font-weight: 500; color: var(--navy); margin-bottom: 2px; }
+.review-date { font-size: 11px; color: #999; }
+
+/* ===================== CONTACT ===================== */
+#contact { padding: 100px 60px; }
+.contact-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; }
+.contact-info-rows { margin-top: 36px; }
+.contact-row { display: flex; gap: 20px; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.c-lbl { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); min-width: 80px; padding-top: 2px; }
+.c-val { font-size: 14px; color: var(--text-light); font-weight: 300; line-height: 1.6; }
+.c-val strong { color: var(--white); font-weight: 400; }
+.c-val a { color: var(--gold); text-decoration: none; }
+
+/* FORM */
+.form-row { margin-bottom: 18px; }
+.form-row label { display: block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+.form-row input, .form-row select, .form-row textarea { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--white); padding: 13px 16px; font-size: 13px; font-family: var(--sans); outline: none; transition: border-color 0.3s; }
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: rgba(201,168,76,0.4); }
+.form-row select option { background: var(--navy); }
+.form-row textarea { resize: none; height: 110px; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-submit { background: var(--gold); color: var(--navy); border: none; padding: 15px 0; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-family: var(--sans); font-weight: 500; cursor: pointer; width: 100%; transition: background 0.3s; }
+.form-submit:hover { background: var(--gold-light); }
+.form-submit:disabled { opacity: 0.6; cursor: default; }
+.wa-quick { display: flex; align-items: center; gap: 14px; background: #25D366; padding: 14px 20px; text-decoration: none; margin-bottom: 20px; transition: opacity 0.3s; }
+.wa-quick:hover { opacity: 0.88; }
+.wa-quick p { font-size: 13px; font-weight: 500; color: white; margin-bottom: 1px; }
+.wa-quick span { font-size: 11px; color: rgba(255,255,255,0.75); }
+.alert { padding: 14px 18px; font-size: 13px; margin-bottom: 16px; display: none; }
+.alert.success { background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.3); color: #4CAF50; }
+.alert.error { background: rgba(220,53,69,0.12); border: 1px solid rgba(220,53,69,0.3); color: #f87171; }
+
+/* ===================== FOOTER ===================== */
+footer { background: var(--navy-mid); border-top: 1px solid rgba(255,255,255,0.06); padding: 36px 60px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.footer-logo { font-family: var(--serif); font-size: 18px; color: var(--white); }
+.footer-logo span { color: var(--gold); }
+.footer-copy { font-size: 11px; color: var(--muted); }
+.footer-links { display: flex; gap: 28px; list-style: none; }
+.footer-links a { font-size: 11px; color: var(--muted); text-decoration: none; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.3s; }
+.footer-links a:hover { color: var(--gold); }
+
+/* ===================== WHATSAPP FLOAT ===================== */
+.wa-float { position: fixed; bottom: 32px; right: 32px; z-index: 999; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.wa-float-label { background: var(--white); color: var(--navy); font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); white-space: nowrap; opacity: 0; transform: translateX(10px); transition: opacity 0.3s, transform 0.3s; pointer-events: none; font-family: var(--sans); }
+.wa-float:hover .wa-float-label { opacity: 1; transform: translateX(0); }
+.wa-float-btn { width: 56px; height: 56px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(37,211,102,0.4); transition: transform 0.3s; position: relative; }
+.wa-float:hover .wa-float-btn { transform: scale(1.08); }
+.wa-ripple { position: absolute; inset: 0; border-radius: 50%; background: #25D366; animation: waPulse 2.5s infinite; z-index: -1; }
+@keyframes waPulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.75); opacity: 0; } }
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1024px) {
+  #services-grid { grid-template-columns: 1fr 1fr; }
+  #doctors-grid { grid-template-columns: 1fr 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .stat-box:nth-child(2) { border-right: none; }
+  .stat-box:nth-child(3) { border-top: 1px solid rgba(201,168,76,0.15); }
+}
+@media (max-width: 768px) {
+  nav { padding: 18px 24px; } nav.scrolled { padding: 12px 24px; }
+  .nav-links, .nav-cta { display: none; }
+  .hamburger { display: flex; }
+  .hero-content { padding: 100px 24px 60px; }
+  #highlights-bar, #stats { padding-left: 24px; padding-right: 24px; }
+  #services, #reviews, #contact, #doctors, #team { padding: 60px 24px; }
+  #services-grid, #doctors-grid, #reviews-grid { grid-template-columns: 1fr; }
+  .services-header { flex-direction: column; align-items: flex-start; }
+  .contact-grid { grid-template-columns: 1fr; gap: 48px; }
+  .form-grid-2 { grid-template-columns: 1fr; }
+  footer { flex-direction: column; text-align: center; padding: 24px; }
+  .footer-links { justify-content: center; flex-wrap: wrap; }
+  .wa-float { bottom: 20px; right: 20px; }
+  .hero-scroll { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- WHATSAPP FLOAT (phone number loaded dynamically) -->
+<a class="wa-float" id="wa-float-btn" href="#" target="_blank" rel="noopener" aria-label="Book via WhatsApp">
+  <span class="wa-float-label">Book via WhatsApp</span>
+  <div class="wa-float-btn">
+    <div class="wa-ripple"></div>
+    <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+      <path d="M16 3C9.373 3 4 8.373 4 15c0 2.385.668 4.61 1.822 6.51L4 29l7.697-1.798A12.94 12.94 0 0016 28c6.627 0 12-5.373 12-12S22.627 3 16 3z" fill="white"/>
+      <path d="M21.5 18.5c-.3-.15-1.8-.9-2.08-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.8-1.48-1.78-1.66-2.08-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.68-1.63-.93-2.23-.24-.58-.5-.5-.68-.51h-.58c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.47 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.48.71.3 1.26.5 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.8-.74 2.05-1.45.25-.7.25-1.3.18-1.43-.07-.12-.27-.19-.57-.34z" fill="#25D366"/>
+    </svg>
+  </div>
+</a>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-close" onclick="toggleMenu()">✕</button>
+  <a href="#hero" onclick="toggleMenu()">Home</a>
+  <a href="#services" onclick="toggleMenu()">Services</a>
+  <a href="#doctors" onclick="toggleMenu()">Doctors</a>
+  <a href="#reviews" onclick="toggleMenu()">Reviews</a>
+  <a href="#contact" onclick="toggleMenu()">Contact</a>
+</div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#hero" class="nav-logo" id="nav-clinic-name">Clinique <span>Nedjma</span> 2</a>
+  <ul class="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#doctors">Doctors</a></li>
+    <li><a href="#reviews">Reviews</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a href="#contact" class="nav-cta">Book Appointment</a>
+  <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg-img" id="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-grid-lines"></div>
+  <div class="hero-content">
+    <div class="hero-badge">Private Healthcare Excellence</div>
+    <h1 id="hero-title">Loading...</h1>
+    <p id="hero-subtitle"></p>
+    <div class="hero-actions">
+      <a href="#contact" class="btn-gold">Book Appointment</a>
+      <a href="#services" class="btn-outline">Our Services</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="hero-scroll-line"></div>
+    <span class="hero-scroll-text">Scroll</span>
+  </div>
+</section>
+
+<!-- HIGHLIGHTS MARQUEE -->
+<div id="highlights-bar">
+  <div class="highlights-track" id="highlights-track">
+    <div class="highlight-item"><div class="h-dot"></div>Loading...</div>
+  </div>
+</div>
+
+<!-- STATS -->
+<section>
+  <div id="stats">
+    <div class="stats-grid">
+      <div class="stat-box"><span class="stat-num"><sup>+</sup>3,000</span><span class="stat-lbl">Successful Deliveries</span></div>
+      <div class="stat-box"><span class="stat-num">15<sup>+</sup></span><span class="stat-lbl">Years of Excellence</span></div>
+      <div class="stat-box"><span class="stat-num">50<sup>+</sup></span><span class="stat-lbl">Specialist Physicians</span></div>
+      <div class="stat-box"><span class="stat-num">24<sup>h</sup></span><span class="stat-lbl">Emergency Services</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="services-header reveal">
+    <div>
+      <div class="section-tag">Medical Specialities</div>
+      <h2 class="section-h2">Comprehensive <em>Care</em><br>Under One Roof</h2>
+    </div>
+    <a href="#contact" class="btn-gold">Book a Service</a>
+  </div>
+  <div id="services-grid">
+    <div class="loading-wrap"><div class="spinner"></div></div>
+  </div>
+</section>
+
+<!-- DOCTORS -->
+<section id="doctors">
+  <div class="section-tag reveal">The Physicians</div>
+  <h2 class="section-h2 reveal">Our <em>Expert</em> Medical Team</h2>
+  <div id="doctors-grid">
+    <div class="loading-wrap"><div class="spinner"></div></div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div class="section-tag reveal">Patient Voices</div>
+    <h2 class="section-h2 reveal">Trusted by <em>Thousands</em><br>of Algerian Families</h2>
+    <div id="reviews-grid">
+      <div class="loading-wrap"><div class="spinner" style="border-top-color:var(--navy)"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="contact-grid">
+    <div>
+      <div class="section-tag reveal">Find Us</div>
+      <h2 class="section-h2 reveal">Get in <em>Touch</em></h2>
+      <p class="body-text reveal">We're here for you around the clock. Message us on WhatsApp for the fastest response, or fill the form and we'll be in touch shortly.</p>
+      <div class="contact-info-rows" id="contact-info-rows">
+        <div class="loading-wrap"><div class="spinner"></div></div>
+      </div>
+    </div>
+    <div class="reveal">
+      <a class="wa-quick" id="wa-quick-btn" href="#" target="_blank">
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><path d="M16 3C9.373 3 4 8.373 4 15c0 2.385.668 4.61 1.822 6.51L4 29l7.697-1.798A12.94 12.94 0 0016 28c6.627 0 12-5.373 12-12S22.627 3 16 3z" fill="white" opacity="0.5"/><path d="M21.5 18.5c-.3-.15-1.8-.9-2.08-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.8-1.48-1.78-1.66-2.08-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.68-1.63-.93-2.23-.24-.58-.5-.5-.68-.51h-.58c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.47 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.08 4.48.71.3 1.26.5 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.8-.74 2.05-1.45.25-.7.25-1.3.18-1.43-.07-.12-.27-.19-.57-.34z" fill="white"/></svg>
+        <div><p>Book instantly via WhatsApp</p><span id="wa-quick-num">Loading...</span></div>
+      </a>
+      <div class="alert success" id="form-success">✓ Message received! We'll contact you shortly.</div>
+      <div class="alert error" id="form-error">Something went wrong. Please try WhatsApp instead.</div>
+      <form id="contact-form">
+        <div class="form-grid-2">
+          <div class="form-row"><label>First Name *</label><input type="text" id="cf-fname" placeholder="Amina" required></div>
+          <div class="form-row"><label>Last Name</label><input type="text" id="cf-lname" placeholder="Boudeffa"></div>
+        </div>
+        <div class="form-row"><label>Phone Number *</label><input type="tel" id="cf-phone" placeholder="+213 — — — — —" required></div>
+        <div class="form-row"><label>Department</label>
+          <select id="cf-dept">
+            <option value="">Select a department</option>
+            <option>Maternity & Obstetrics</option>
+            <option>Orthopedic Surgery</option>
+            <option>Gynecology</option>
+            <option>General Surgery</option>
+            <option>Emergency Care</option>
+            <option>Neurology</option>
+            <option>Internal Medicine</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Message</label><textarea id="cf-msg" placeholder="Describe your concern or preferred appointment time…"></textarea></div>
+        <button type="submit" class="form-submit" id="form-submit-btn">Request an Appointment</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo" id="footer-logo">Clinique <span>Nedjma</span> 2</div>
+  <ul class="footer-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#doctors">Doctors</a></li>
+    <li><a href="#reviews">Reviews</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <p class="footer-copy" id="footer-copy">© 2026 Clinique Nedjma 2. All rights reserved.</p>
+</footer>
+
+<!-- Firebase SDKs -->
+<script src="../firebase-config.js"></script>
+
+<script>
+// ============================================================
+//  PUBLIC WEBSITE — Dynamic content loader
+// ============================================================
+
+/* ---- NAV SCROLL ---- */
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', scrollY > 60);
+});
+
+/* ---- MOBILE MENU ---- */
+function toggleMenu() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+
+/* ---- REVEAL ON SCROLL ---- */
+const revealIO = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revealIO.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => revealIO.observe(el));
+
+/* ---- PAGE VISITS COUNTER ---- */
+async function incrementVisits() {
+  try {
+    const ref = db.collection('settings').doc('main');
+    await ref.set({ page_visits: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+  } catch(e) { /* silent */ }
+}
+incrementVisits();
+
+/* ---- LOAD SETTINGS ---- */
+async function loadSettings() {
+  try {
+    const doc = await db.collection('settings').doc('main').get();
+    if (!doc.exists) return;
+    const s = doc.data();
+    // Update WhatsApp links
+    const waNum = s.whatsapp || '';
+    const waClean = waNum.replace(/\D/g,'');
+    const waMsg = encodeURIComponent('Bonjour Clinique Nedjma 2, je souhaite prendre un rendez-vous.');
+    const waHref = `https://wa.me/${waClean}?text=${waMsg}`;
+    document.getElementById('wa-float-btn').href = waHref;
+    document.getElementById('wa-quick-btn').href = waHref;
+    document.getElementById('wa-quick-num').textContent = waNum || s.phone || '';
+    // Update nav cta
+    document.querySelectorAll('.nav-cta').forEach(el => { if (el.tagName === 'A') el.href = '#contact'; });
+    // Contact info rows
+    const rows = [
+      { label: 'Location', value: s.address || '—' },
+      { label: 'Hours',    value: s.opening_hours || '24/7' },
+      { label: 'Phone',    value: s.phone ? `<a href="tel:${s.phone}">${s.phone}</a>` : '—' },
+      { label: 'WhatsApp', value: s.whatsapp ? `<a href="${waHref}" target="_blank">${s.whatsapp}</a>` : '—' },
+      { label: 'Email',    value: s.email ? `<a href="mailto:${s.email}">${s.email}</a>` : '—' },
+    ];
+    document.getElementById('contact-info-rows').innerHTML = rows.map(r =>
+      `<div class="contact-row"><span class="c-lbl">${r.label}</span><span class="c-val">${r.value}</span></div>`
+    ).join('');
+    // Footer
+    if (s.clinic_name) {
+      document.title = s.clinic_name;
+      document.getElementById('footer-copy').textContent = `© ${new Date().getFullYear()} ${s.clinic_name}. All rights reserved.`;
+    }
+  } catch(e) { console.error('Settings load error:', e); }
+}
+
+/* ---- LOAD HOMEPAGE ---- */
+async function loadHomepage() {
+  try {
+    const doc = await db.collection('homepage').doc('main').get();
+    if (!doc.exists) return;
+    const h = doc.data();
+    if (h.title) document.getElementById('hero-title').innerHTML = h.title;
+    if (h.subtitle) document.getElementById('hero-subtitle').textContent = h.subtitle;
+    if (h.hero_image) {
+      const bg = document.getElementById('hero-bg');
+      bg.style.backgroundImage = `url('${h.hero_image}')`;
+      bg.style.opacity = '0.2';
+    }
+    if (h.highlights && h.highlights.length) {
+      const doubled = [...h.highlights, ...h.highlights]; // duplicate for seamless loop
+      document.getElementById('highlights-track').innerHTML = doubled.map(t =>
+        `<div class="highlight-item"><div class="h-dot"></div>${t}</div>`
+      ).join('');
+    }
+  } catch(e) { console.error('Homepage load error:', e); }
+}
+
+/* ---- LOAD SERVICES ---- */
+async function loadServices() {
+  const grid = document.getElementById('services-grid');
+  try {
+    const snap = await db.collection('services').where('isActive', '==', true).get();
+    if (snap.empty) { grid.innerHTML = '<p style="color:var(--muted);padding:40px">No services listed yet.</p>'; return; }
+    grid.innerHTML = snap.docs.map(doc => {
+      const s = doc.data();
+      const img = s.image
+        ? `<img class="service-img" src="${s.image}" alt="${s.name}" loading="lazy">`
+        : `<div class="service-icon-ph">⚕️</div>`;
+      return `<div class="service-card reveal">${img}<div class="service-name">${s.name}</div><p class="service-desc">${s.description || ''}</p></div>`;
+    }).join('');
+    grid.querySelectorAll('.reveal').forEach(el => revealIO.observe(el));
+  } catch(e) { grid.innerHTML = '<p style="color:var(--muted);padding:40px">Could not load services.</p>'; }
+}
+
+/* ---- LOAD DOCTORS ---- */
+async function loadDoctors() {
+  const grid = document.getElementById('doctors-grid');
+  try {
+    const snap = await db.collection('doctors').where('isActive', '==', true).get();
+    if (snap.empty) { grid.innerHTML = '<p style="color:var(--muted);padding:40px">No doctors listed yet.</p>'; return; }
+    grid.innerHTML = snap.docs.map(doc => {
+      const d = doc.data();
+      const initials = d.name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+      const img = d.image
+        ? `<img class="doctor-img" src="${d.image}" alt="${d.name}" loading="lazy">`
+        : `<div class="doctor-avatar-ph">${initials}</div>`;
+      return `<div class="doctor-card reveal">${img}<div class="doctor-info"><div class="doctor-name">${d.name}</div><div class="doctor-specialty">${d.specialty || ''}</div><p class="doctor-bio">${d.bio || ''}</p></div></div>`;
+    }).join('');
+    grid.querySelectorAll('.reveal').forEach(el => revealIO.observe(el));
+  } catch(e) { grid.innerHTML = '<p style="color:var(--muted);padding:40px">Could not load doctors.</p>'; }
+}
+
+/* ---- LOAD REVIEWS ---- */
+async function loadReviews() {
+  const grid = document.getElementById('reviews-grid');
+  try {
+    const snap = await db.collection('reviews').orderBy('date', 'desc').limit(6).get();
+    if (snap.empty) { grid.innerHTML = '<p style="color:var(--muted);padding:40px">No reviews yet.</p>'; return; }
+    grid.style.display = 'grid';
+    grid.innerHTML = snap.docs.map((doc, i) => {
+      const r = doc.data();
+      const stars = '★'.repeat(r.rating || 5) + '☆'.repeat(5 - (r.rating || 5));
+      const initials = r.name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+      const date = r.date ? new Date(r.date.toDate()).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '';
+      const featured = i === 0 ? 'style="background:var(--navy);border-bottom-color:var(--gold);"' : '';
+      const qColor = i === 0 ? 'color:var(--white)' : 'color:var(--navy)';
+      const nColor = i === 0 ? 'color:var(--white)' : 'color:var(--navy)';
+      return `<div class="review-card reveal" ${featured}><div class="review-stars">${stars}</div><p class="review-msg" style="${qColor}">${r.message}</p><div class="review-author"><div class="review-avatar">${initials}</div><div><div class="review-name" style="${nColor}">${r.name}</div><div class="review-date">${date}</div></div></div></div>`;
+    }).join('');
+    grid.querySelectorAll('.reveal').forEach(el => revealIO.observe(el));
+  } catch(e) { grid.innerHTML = '<p style="color:var(--muted);padding:40px">Could not load reviews.</p>'; }
+}
+
+/* ---- CONTACT FORM SUBMIT ---- */
+document.getElementById('contact-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('form-submit-btn');
+  const successEl = document.getElementById('form-success');
+  const errorEl = document.getElementById('form-error');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  successEl.style.display = 'none'; errorEl.style.display = 'none';
+  try {
+    const fname = document.getElementById('cf-fname').value.trim();
+    const lname = document.getElementById('cf-lname').value.trim();
+    const phone = document.getElementById('cf-phone').value.trim();
+    const dept  = document.getElementById('cf-dept').value;
+    const msg   = document.getElementById('cf-msg').value.trim();
+    await db.collection('contact_requests').add({
+      name: `${fname} ${lname}`.trim(),
+      phone, department: dept, message: msg,
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      status: 'new'
+    });
+    this.reset();
+    successEl.style.display = 'block';
+    btn.textContent = 'Request an Appointment'; btn.disabled = false;
+  } catch(err) {
+    errorEl.style.display = 'block';
+    btn.textContent = 'Request an Appointment'; btn.disabled = false;
+  }
+});
+
+/* ---- INIT ---- */
+(async function init() {
+  await Promise.all([loadSettings(), loadHomepage(), loadServices(), loadDoctors(), loadReviews()]);
+})();
+</script>
+</body>
+</html>

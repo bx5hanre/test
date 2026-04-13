@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Public READ access ─────────────────────────────────────
+    // Anyone can read: homepage, services, doctors, reviews, settings, media
+    match /homepage/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /settings/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /services/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /doctors/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /reviews/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /media/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Contact requests ───────────────────────────────────────
+    // Public users can CREATE (submit form), only admin can READ/UPDATE/DELETE
+    match /contact_requests/{doc} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+  }
+}
